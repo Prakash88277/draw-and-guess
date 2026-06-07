@@ -35,6 +35,7 @@ export default function Room() {
   const navigate = useNavigate();
   const location = useLocation();
   const [copied, setCopied] = useState(false);
+  const [summaryTimeLeft, setSummaryTimeLeft] = useState(5);
 
   // Read player details from navigation state (set in Home.jsx)
   const playerName = location.state?.playerName;
@@ -52,6 +53,7 @@ export default function Room() {
     messages,
     currentRound,
     totalRounds,
+    turnSummary,
     sendGuess,
     chooseWord
   } = useGameSocket(socket, roomId);
@@ -74,6 +76,16 @@ export default function Room() {
     }
   }, [gameStatus, navigate, players, roomId, playerName, avatar]);
 
+  useEffect(() => {
+    if (turnSummary) {
+      setSummaryTimeLeft(5);
+      const interval = setInterval(() => {
+        setSummaryTimeLeft(prev => prev > 0 ? prev - 1 : 0);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [turnSummary]);
+
   const handleStartGame = () => {
     socket.emit('game:start');
   };
@@ -86,7 +98,10 @@ export default function Room() {
 
   // Find my player object
   const me = players.find(p => p.id === socket.id);
-  const isDrawer = currentDrawer?.id === socket.id;
+  const isDrawer = socket.id === currentDrawer?.id;
+  
+  console.log('Room rendered. currentDrawer:', currentDrawer, 'socket.id:', socket.id, 'isDrawer:', isDrawer);
+  
   const ownerId = players.length > 0 ? players[0].id : null; 
   const isOwner = ownerId === socket.id;
 
@@ -142,6 +157,45 @@ export default function Room() {
 
         {/* Center: Canvas Area */}
         <div className="flex-grow flex flex-col min-w-0 bg-white rounded shadow border border-gray-200 relative overflow-hidden h-[50vh] md:h-full">
+          
+          {turnSummary && (
+            <div className="absolute inset-0 bg-black/80 z-30 flex flex-col items-center justify-center p-4 backdrop-blur-sm text-white">
+              <h2 className="text-2xl font-bold mb-2">The word was:</h2>
+              <div className="text-4xl font-extrabold text-yellow-400 tracking-widest mb-8 uppercase">
+                {turnSummary.word}
+              </div>
+              
+              <div className="w-full max-w-md bg-white/10 rounded-xl overflow-hidden mb-8 shadow-2xl">
+                <div className="flex flex-col divide-y divide-white/10">
+                  {turnSummary.scores.map((p, i) => {
+                    const gained = turnSummary.pointsThisTurn[p.id] || 0;
+                    return (
+                      <div key={p.id} className="flex items-center justify-between p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 text-center font-bold text-gray-400">#{i + 1}</div>
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs" style={{ backgroundColor: p.avatar }}>
+                            {p.name.substring(0,2).toUpperCase()}
+                          </div>
+                          <div className="font-bold">{p.name}</div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="font-mono">{p.score} pts</div>
+                          <div className={`font-bold w-12 text-right ${gained > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                            +{gained}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              <div className="text-xl font-semibold animate-pulse text-indigo-200">
+                Next round in {summaryTimeLeft}...
+              </div>
+            </div>
+          )}
+
           {gameStatus === 'waiting' ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
               <h2 className="text-3xl font-bold text-gray-800 mb-4">Waiting for players...</h2>
@@ -195,6 +249,7 @@ export default function Room() {
                 roomId={roomId}
                 wordHint={wordHint}
                 myWord={myWord}
+                drawerName={currentDrawer?.name}
               />
             </>
           )}

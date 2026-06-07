@@ -25,12 +25,19 @@
  * Current state: complete
  */
 
-const { v4: uuidv4 } = require('uuid');
+function generateRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 7; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
 
 const rooms = new Map();
 
 function createRoom(socketId, playerName, avatar, settings) {
-  const roomId = uuidv4();
+  const roomId = generateRoomCode();
   
   const room = {
     id: roomId,
@@ -50,7 +57,9 @@ function createRoom(socketId, playerName, avatar, settings) {
       rounds: settings?.rounds || 3,
       drawTime: settings?.drawTime || 80,
       customWords: settings?.customWords || [],
-      useCustomWordsOnly: settings?.useCustomWordsOnly || false
+      useCustomWordsOnly: settings?.useCustomWordsOnly || false,
+      wordCount: settings?.wordCount || 3,
+      hints: settings?.hints !== undefined ? settings?.hints : 2
     },
     gameState: {
       status: 'waiting',

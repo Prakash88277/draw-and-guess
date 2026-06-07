@@ -87,6 +87,12 @@ function registerSocketHandlers(io) {
       const drawer = room.players[room.gameState.currentDrawerIndex];
       if (!drawer || drawer.id !== socket.id) return;
 
+      const { wordSelectionTimers } = require('./gameEngine');
+      if (wordSelectionTimers.has(room.id)) {
+        clearTimeout(wordSelectionTimers.get(room.id));
+        wordSelectionTimers.delete(room.id);
+      }
+
       gameEngine.beginDrawing(io, room.id, payload.word);
     });
 

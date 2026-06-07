@@ -25,7 +25,8 @@ import { useCanvas } from '../hooks/useCanvas';
 import ToolBar from './ToolBar';
 import WordDisplay from './WordDisplay';
 
-export default function Canvas({ isDrawer, socket, roomId, wordHint, myWord }) {
+export default function Canvas({ isDrawer, socket, roomId, wordHint, myWord, drawerName }) {
+  console.log('Canvas rendered, isDrawer:', isDrawer);
   const canvasRef = useRef(null);
   
   const {
@@ -57,13 +58,20 @@ export default function Canvas({ isDrawer, socket, roomId, wordHint, myWord }) {
   return (
     <div className="flex flex-col items-center w-full h-full bg-white rounded shadow relative overflow-hidden border border-gray-200">
       
-      <div className="w-full bg-blue-50 p-2 flex justify-center items-center h-16 border-b border-gray-200 z-10">
+      <div className="w-full bg-blue-50 p-2 flex flex-col justify-center items-center min-h-[4rem] border-b border-gray-200 z-10">
         {isDrawer ? (
           <div className="text-xl font-bold text-gray-800">
             Your word: <span className="text-indigo-600 tracking-widest">{myWord}</span>
           </div>
         ) : (
-          <WordDisplay hint={wordHint} />
+          <>
+            <WordDisplay hint={wordHint} />
+            {drawerName && (
+              <div className="text-sm text-gray-500 italic mt-1 font-medium">
+                {drawerName} is drawing...
+              </div>
+            )}
+          </>
         )}
       </div>
 

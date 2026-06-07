@@ -32,6 +32,8 @@ export default function Home() {
   // Settings for create room
   const [rounds, setRounds] = useState(3);
   const [drawTime, setDrawTime] = useState(80);
+  const [wordCount, setWordCount] = useState(3);
+  const [hints, setHints] = useState(2);
   const [maxPlayers, setMaxPlayers] = useState(8);
 
   const [error, setError] = useState('');
@@ -75,7 +77,7 @@ export default function Home() {
     socket.emit('room:create', {
       playerName: name.trim(),
       avatar,
-      settings: { rounds, drawTime, maxPlayers }
+      settings: { rounds, drawTime, maxPlayers, wordCount, hints }
     });
   };
 
@@ -165,7 +167,7 @@ export default function Home() {
                 <div>
                   <label className="block text-indigo-700 font-semibold mb-1 text-sm">Rounds</label>
                   <select 
-                    className="w-full p-2 rounded border-indigo-200"
+                    className="w-full p-2 rounded border border-indigo-200"
                     value={rounds} onChange={(e) => setRounds(Number(e.target.value))}
                   >
                     {[2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
@@ -174,10 +176,28 @@ export default function Home() {
                 <div>
                   <label className="block text-indigo-700 font-semibold mb-1 text-sm">Draw Time (s)</label>
                   <select 
-                    className="w-full p-2 rounded border-indigo-200"
+                    className="w-full p-2 rounded border border-indigo-200"
                     value={drawTime} onChange={(e) => setDrawTime(Number(e.target.value))}
                   >
-                    {[30, 45, 60, 80, 100, 120].map(n => <option key={n} value={n}>{n}</option>)}
+                    {[15, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 150, 180, 210, 240].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-indigo-700 font-semibold mb-1 text-sm">Word Count</label>
+                  <select 
+                    className="w-full p-2 rounded border border-indigo-200"
+                    value={wordCount} onChange={(e) => setWordCount(Number(e.target.value))}
+                  >
+                    {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-indigo-700 font-semibold mb-1 text-sm">Hints</label>
+                  <select 
+                    className="w-full p-2 rounded border border-indigo-200"
+                    value={hints} onChange={(e) => setHints(Number(e.target.value))}
+                  >
+                    {[0, 1, 2, 3].map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
               </div>

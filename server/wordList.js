@@ -19,6 +19,7 @@
  */
 
 const WORDS = [
+  // EASY
   // Animals
   'dog', 'cat', 'elephant', 'tiger', 'lion', 'giraffe', 'zebra', 'bear', 'wolf', 'fox',
   'rabbit', 'deer', 'monkey', 'gorilla', 'kangaroo', 'koala', 'panda', 'sloth', 'rhino', 'hippo',
@@ -36,7 +37,19 @@ const WORDS = [
   'river', 'lake', 'ocean', 'sea', 'waterfall', 'cloud', 'rain', 'snow', 'wind', 'storm',
   // Technology
   'computer', 'laptop', 'tablet', 'phone', 'smartphone', 'keyboard', 'mouse', 'monitor', 'printer', 'speaker',
-  'headphones', 'microphone', 'camera', 'television', 'radio', 'watch', 'clock', 'battery', 'charger', 'cable'
+  'headphones', 'microphone', 'camera', 'television', 'radio', 'watch', 'clock', 'battery', 'charger', 'cable',
+
+  // MEDIUM
+  'volcano', 'telescope', 'umbrella', 'thunderstorm', 'submarine', 'escalator', 'backpack', 'parachute', 'skateboard', 'waterfall', 
+  'compass', 'lighthouse', 'hammock', 'avalanche', 'binoculars', 'catapult', 'windmill', 'jellyfish', 'stalactite', 'periscope', 
+  'boomerang', 'chandelier', 'quicksand', 'tornado', 'snowflake', 'constellation', 'hourglass', 'trampoline', 'conveyor belt', 
+  'fire hydrant', 'traffic light', 'hot air balloon', 'solar panel', 'diving board', 'speed bump', 'revolving door', 'shopping cart', 
+  'parking meter', 'fire escape', 'manhole cover',
+
+  // HARD
+  'democracy', 'gravity', 'echo', 'silence', 'dream', 'memory', 'hunger', 'jealousy', 'evolution', 'inflation', 
+  'deadline', 'nightmare', 'freedom', 'patience', 'nostalgia', 'rhythm', 'temperature', 'electricity', 'pollution', 'tradition', 
+  'ambition', 'coincidence', 'paranoia', 'procrastination', 'enthusiasm', 'sarcasm', 'equilibrium', 'momentum', 'renaissance', 'phenomenon'
 ];
 
 let CUSTOM_WORDS = [];
