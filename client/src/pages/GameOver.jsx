@@ -31,8 +31,9 @@ export default function GameOver() {
   const playerName = location.state?.playerName;
   const avatar = location.state?.avatar;
 
-  // The players array is already sorted descending by gameEngine before emitting game:over
-  const top3 = players.slice(0, 3);
+  // Ensure the players array is sorted descending by score
+  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+  const top3 = sortedPlayers.slice(0, 3);
   const winner = top3[0];
 
   const handleGoHome = () => {
