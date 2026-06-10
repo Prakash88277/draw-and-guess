@@ -28,6 +28,7 @@ const roomManager = require('./roomManager');
 const { getRandomWords, getWordForDisplay } = require('./wordList');
 
 const timers = new Map(); // Store interval IDs keyed by roomId
+const wordSelectionTimers = new Map(); // Store timeout IDs for word selection phase
 
 function startGame(io, roomId) {
   const room = roomManager.getRoomById(roomId);
@@ -45,10 +46,17 @@ function startTurn(io, roomId) {
   if (!room) return;
 
   room.gameState.turnEnding = false;
+  room.gameState.currentWord = null;
   roomManager.resetGuessFlags(roomId);
   roomManager.clearCanvasHistory(roomId);
+  io.to(roomId).emit('canvas:clear');
+  
+  room.gameState.turnStartScores = {};
+  room.players.forEach(p => {
+    room.gameState.turnStartScores[p.id] = p.score;
+  });
 
-  const words = getRandomWords(3);
+  const words = getRandomWords(room.settings.wordCount || 3);
   room.gameState.wordChoices = words;
   
   // Reset all isDrawing flags, set current drawer
@@ -67,28 +75,40 @@ function startTurn(io, roomId) {
     totalRounds: room.settings.rounds 
   });
   
+  // Sync reset player states (hasGuessed, isDrawing) to all clients
+  io.to(roomId).emit('room:updated', room.players);
+  
   // Send words only to drawer
   io.to(drawer.id).emit('word:choices', words);
 
-  // 15 seconds to pick a word
-  let selectTimeLeft = 15;
-  if (timers.has(roomId)) {
-    clearInterval(timers.get(roomId));
+  // Clear any existing word selection timer for this room
+  if (wordSelectionTimers.has(roomId)) {
+    clearTimeout(wordSelectionTimers.get(roomId));
+    wordSelectionTimers.delete(roomId);
   }
-  
-  const timerId = setInterval(() => {
-    selectTimeLeft--;
-    // We could emit a timer tick here for the select phase
-    io.to(roomId).emit('timer:tick', selectTimeLeft);
-    if (selectTimeLeft <= 0) {
-      clearInterval(timers.get(roomId));
-      timers.delete(roomId);
-      // auto pick first word
-      const autoWord = room.gameState.wordChoices[0];
-      beginDrawing(io, roomId, autoWord);
+
+  // Auto-skip turn after 15 seconds if drawer doesn't choose
+  const autoTimer = setTimeout(() => {
+    const room = roomManager.getRoomById(roomId);
+    if (room && room.gameState.currentWord === null) {
+      console.log(`[Auto] No word chosen in room ${roomId}, skipping turn.`);
+      const currentDrawer = room.players[room.gameState.currentDrawerIndex];
+      
+      io.to(roomId).emit('message', { 
+        text: `${currentDrawer ? currentDrawer.name : 'The drawer'} took too long to choose a word. Turn skipped!`, 
+        type: 'system' 
+      });
+      
+      if (currentDrawer) {
+        currentDrawer.isDrawing = false;
+      }
+      
+      nextTurn(io, roomId);
     }
-  }, 1000);
-  timers.set(roomId, timerId);
+    wordSelectionTimers.delete(roomId);
+  }, 15000);
+
+  wordSelectionTimers.set(roomId, autoTimer);
 }
 
 function beginDrawing(io, roomId, chosenWord) {
@@ -112,28 +132,35 @@ function beginDrawing(io, roomId, chosenWord) {
 
   io.to(roomId).emit('drawing:start', { timeLeft: room.settings.drawTime });
 
+  const numHints = room.settings.hints !== undefined ? room.settings.hints : 2;
+  const drawTime = room.settings.drawTime;
+  const hintIntervals = [];
+  if (numHints > 0) {
+    for (let i = 1; i <= numHints; i++) {
+      hintIntervals.push(Math.floor(drawTime - (drawTime / (numHints + 1)) * i));
+    }
+  }
+  
+  let revealedIndices = [];
+  let nonSpaceIndices = [];
+  for(let i=0; i<chosenWord.length; i++) {
+    if (chosenWord[i] !== ' ') nonSpaceIndices.push(i);
+  }
+
   const timerId = setInterval(() => {
     room.gameState.timeLeft--;
     io.to(roomId).emit('timer:tick', room.gameState.timeLeft);
 
-    // Send random letter hint if time < 20%
-    if (room.gameState.timeLeft === Math.floor(room.settings.drawTime * 0.2)) {
-      let chars = chosenWord.split('');
-      let displayChars = hint.split(' '); // split by space to get each part since it's "char space char"
-      // Wait, getWordForDisplay returns e.g. "_ _ _" -> split(' ') -> ["_", "_", "_"]
-      // Actually it joins by " ". So `hint` is char combined. Let's just create a new hint.
-      
-      let unrevealed = [];
-      for(let i=0; i<chars.length; i++) {
-        if (chars[i] !== ' ') {
-          unrevealed.push(i);
-        }
-      }
-      if (unrevealed.length > 0) {
+    if (hintIntervals.includes(room.gameState.timeLeft)) {
+      let unrevealed = nonSpaceIndices.filter(idx => !revealedIndices.includes(idx));
+      // Never reveal the last letter
+      if (unrevealed.length > 1) {
         let randIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
-        let newHint = chars.map((char, i) => {
+        revealedIndices.push(randIdx);
+        
+        let newHint = chosenWord.split('').map((char, i) => {
           if (char === ' ') return ' ';
-          if (i === randIdx) return char;
+          if (revealedIndices.includes(i)) return char;
           return '_';
         }).join(' ');
         
@@ -171,11 +198,22 @@ function endTurn(io, roomId) {
     drawer.isDrawing = false;
   }
 
+  const pointsThisTurn = {};
+  room.players.forEach(p => {
+    pointsThisTurn[p.id] = p.score - (room.gameState.turnStartScores?.[p.id] || 0);
+  });
+  const sortedPlayers = [...room.players].sort((a, b) => b.score - a.score);
+
   io.to(roomId).emit('turn:end', { word: room.gameState.currentWord });
+  io.to(roomId).emit('turn:summary', {
+    word: room.gameState.currentWord,
+    scores: sortedPlayers,
+    pointsThisTurn
+  });
 
   setTimeout(() => {
     nextTurn(io, roomId);
-  }, 3000);
+  }, 5000);
 }
 
 function nextTurn(io, roomId) {
@@ -255,5 +293,6 @@ module.exports = {
   nextTurn,
   endGame,
   calculateScore,
-  handleCorrectGuess
+  handleCorrectGuess,
+  wordSelectionTimers
 };

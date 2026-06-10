@@ -30,6 +30,7 @@ export function useGameSocket(socket, roomId) {
   const [messages, setMessages] = useState([]);
   const [currentRound, setCurrentRound] = useState(0);
   const [totalRounds, setTotalRounds] = useState(0);
+  const [turnSummary, setTurnSummary] = useState(null);
   const [finalScores, setFinalScores] = useState([]);
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export function useGameSocket(socket, roomId) {
       setWordHint('');
       setMyWord('');
       setWordChoices([]);
+      setTurnSummary(null);
       
       setMessages(prev => [...prev, {
         playerName: 'System',
@@ -85,6 +87,10 @@ export function useGameSocket(socket, roomId) {
       }]);
     };
 
+    const onTurnSummary = (data) => {
+      setTurnSummary(data);
+    };
+
     const onScoreUpdate = (newPlayers) => setPlayers(newPlayers);
 
     const onChatMessage = (data) => {
@@ -107,6 +113,7 @@ export function useGameSocket(socket, roomId) {
     socket.on('score:update', onScoreUpdate);
     socket.on('chat:message', onChatMessage);
     socket.on('game:over', onGameOver);
+    socket.on('turn:summary', onTurnSummary);
 
     return () => {
       socket.off('room:updated', onRoomUpdated);
@@ -120,6 +127,7 @@ export function useGameSocket(socket, roomId) {
       socket.off('score:update', onScoreUpdate);
       socket.off('chat:message', onChatMessage);
       socket.off('game:over', onGameOver);
+      socket.off('turn:summary', onTurnSummary);
     };
   }, [socket]);
 
@@ -150,6 +158,7 @@ export function useGameSocket(socket, roomId) {
     messages,
     currentRound,
     totalRounds,
+    turnSummary,
     finalScores,
     sendGuess,
     chooseWord
