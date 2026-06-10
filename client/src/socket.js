@@ -20,10 +20,16 @@
 
 import { io } from 'socket.io-client';
 
-const URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+// In development, ALWAYS use the dynamic local network IP.
+// In production, fallback to the configured VITE_SERVER_URL.
+const isDev = import.meta.env.DEV;
+const URL = isDev 
+  ? `http://${window.location.hostname}:3001`
+  : import.meta.env.VITE_SERVER_URL || `http://${window.location.hostname}:3001`;
 
 const socket = io(URL, {
-  autoConnect: false
+  autoConnect: false,
+  transports: ['websocket', 'polling']
 });
 
 export default socket;
