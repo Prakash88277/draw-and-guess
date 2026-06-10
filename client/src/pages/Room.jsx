@@ -36,6 +36,7 @@ export default function Room() {
   const location = useLocation();
   const [copied, setCopied] = useState(false);
   const [summaryTimeLeft, setSummaryTimeLeft] = useState(5);
+  const [showPlayers, setShowPlayers] = useState(false);
 
   // Read player details from navigation state (set in Home.jsx)
   const playerName = location.state?.playerName;
@@ -145,8 +146,8 @@ export default function Room() {
       {/* Main Content Area */}
       <div className="flex flex-col md:flex-row gap-4 flex-grow overflow-hidden">
         
-        {/* Left Column: Players */}
-        <div className="w-full md:w-64 shrink-0 h-48 md:h-full">
+        {/* Left Column: Players (Hidden on Mobile) */}
+        <div className="hidden md:block md:w-64 shrink-0 h-full">
           <PlayerList 
             players={players} 
             ownerId={ownerId}
@@ -156,7 +157,7 @@ export default function Room() {
         </div>
 
         {/* Center: Canvas Area */}
-        <div className="flex-grow flex flex-col min-w-0 bg-white rounded shadow border border-gray-200 relative overflow-hidden h-[50vh] md:h-full">
+        <div className="flex-grow flex flex-col min-w-0 bg-white rounded shadow border border-gray-200 relative overflow-hidden h-[55vh] min-h-[280px] md:max-h-none md:h-full">
           
           {turnSummary && (
             <div className="absolute inset-0 bg-black/80 z-30 flex flex-col items-center justify-center p-4 backdrop-blur-sm text-white">
@@ -266,6 +267,40 @@ export default function Room() {
         </div>
 
       </div>
+
+      {/* Mobile Players Button */}
+      <button 
+        onClick={() => setShowPlayers(true)}
+        className="fixed bottom-4 left-4 z-40 bg-indigo-600 text-white rounded-full px-4 py-3 text-sm font-bold shadow-lg md:hidden flex items-center gap-2 hover:bg-indigo-700"
+      >
+        <span>👥</span> Players ({players.length})
+      </button>
+
+      {/* Mobile Players Overlay */}
+      {showPlayers && (
+        <div className="fixed inset-0 z-50 bg-black/60 md:hidden flex flex-col justify-end" onClick={() => setShowPlayers(false)}>
+          <div className="bg-white rounded-t-2xl max-h-[70vh] overflow-hidden flex flex-col animate-slide-up shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+              <h2 className="font-bold text-lg text-gray-800">Players ({players.length})</h2>
+              <button 
+                onClick={() => setShowPlayers(false)} 
+                className="font-bold text-indigo-600 px-4 py-1 bg-indigo-100 rounded-full"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto bg-gray-100 flex-grow">
+              <PlayerList 
+                players={players} 
+                ownerId={ownerId}
+                currentDrawerId={currentDrawer?.id}
+                myId={socket.id}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
