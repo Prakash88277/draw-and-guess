@@ -37,6 +37,7 @@ export default function Room() {
   const [copied, setCopied] = useState(false);
   const [summaryTimeLeft, setSummaryTimeLeft] = useState(5);
   const [showPlayers, setShowPlayers] = useState(false);
+  const [selectTimeLeft, setSelectTimeLeft] = useState(15);
 
   // Read player details from navigation state (set in Home.jsx)
   const playerName = location.state?.playerName;
@@ -58,6 +59,10 @@ export default function Room() {
     sendGuess,
     chooseWord
   } = useGameSocket(socket, roomId);
+
+  // Find my player object
+  const me = players.find(p => p.id === socket.id);
+  const isDrawer = socket.id === currentDrawer?.id;
 
   useEffect(() => {
     if (!playerName || !socket.connected) {
@@ -87,6 +92,16 @@ export default function Room() {
     }
   }, [turnSummary]);
 
+  useEffect(() => {
+    if (isDrawer && wordChoices.length > 0) {
+      setSelectTimeLeft(15);
+      const interval = setInterval(() => {
+        setSelectTimeLeft(prev => prev > 0 ? prev - 1 : 0);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isDrawer, wordChoices]);
+
   const handleStartGame = () => {
     socket.emit('game:start');
   };
@@ -97,20 +112,16 @@ export default function Room() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Find my player object
-  const me = players.find(p => p.id === socket.id);
-  const isDrawer = socket.id === currentDrawer?.id;
-  
   console.log('Room rendered. currentDrawer:', currentDrawer, 'socket.id:', socket.id, 'isDrawer:', isDrawer);
   
   const ownerId = players.length > 0 ? players[0].id : null; 
   const isOwner = ownerId === socket.id;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-2 md:p-4 flex flex-col font-sans h-screen">
+    <div className="bg-gray-100 p-2 md:p-4 flex flex-col font-sans h-[100dvh] overflow-hidden">
       
       {/* Top Bar */}
-      <div className="bg-white rounded shadow-sm p-3 mb-4 flex flex-col md:flex-row items-center justify-between border border-gray-200 shrink-0 gap-3">
+      <div className="bg-white rounded shadow-sm p-3 mb-2 md:mb-4 flex flex-col md:flex-row items-center justify-between border border-gray-200 shrink-0 gap-2 md:gap-3">
         <div className="flex items-center gap-4 w-full md:w-auto justify-between">
           <div className="text-xl font-bold text-indigo-600">
             Skribbl<span className="text-pink-500">Clone</span>
@@ -132,10 +143,10 @@ export default function Room() {
         )}
 
         <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-          <span className="text-gray-500 font-semibold">Room Code:</span>
+          <span className="text-gray-500 font-semibold text-sm md:text-base">Room Code:</span>
           <button 
             onClick={copyRoomCode}
-            className="flex items-center gap-1 bg-indigo-50 text-indigo-700 font-mono font-bold px-3 py-1 rounded hover:bg-indigo-100 transition-colors"
+            className="flex items-center gap-1 bg-indigo-50 text-indigo-700 font-mono font-bold px-3 py-1 rounded hover:bg-indigo-100 transition-colors text-sm md:text-base"
           >
             {roomId}
             {copied ? <Check size={16} /> : <Copy size={16} />}
@@ -144,7 +155,7 @@ export default function Room() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-col md:flex-row gap-4 flex-grow overflow-hidden">
+      <div className="flex flex-col md:flex-row gap-2 md:gap-4 flex-grow overflow-hidden pb-16 md:pb-0">
         
         {/* Left Column: Players (Hidden on Mobile) */}
         <div className="hidden md:block md:w-64 shrink-0 h-full">
@@ -157,42 +168,44 @@ export default function Room() {
         </div>
 
         {/* Center: Canvas Area */}
-        <div className="flex-grow flex flex-col min-w-0 bg-white rounded shadow border border-gray-200 relative overflow-hidden h-[55vh] min-h-[280px] md:max-h-none md:h-full">
+        <div className="flex-1 flex flex-col min-w-0 bg-white rounded shadow border border-gray-200 relative overflow-hidden md:h-full">
           
           {turnSummary && (
-            <div className="absolute inset-0 bg-black/80 z-30 flex flex-col items-center justify-center p-4 backdrop-blur-sm text-white">
-              <h2 className="text-2xl font-bold mb-2">The word was:</h2>
-              <div className="text-4xl font-extrabold text-yellow-400 tracking-widest mb-8 uppercase">
-                {turnSummary.word}
-              </div>
-              
-              <div className="w-full max-w-md bg-white/10 rounded-xl overflow-hidden mb-8 shadow-2xl">
-                <div className="flex flex-col divide-y divide-white/10">
-                  {turnSummary.scores.map((p, i) => {
-                    const gained = turnSummary.pointsThisTurn[p.id] || 0;
-                    return (
-                      <div key={p.id} className="flex items-center justify-between p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-6 text-center font-bold text-gray-400">#{i + 1}</div>
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs" style={{ backgroundColor: p.avatar }}>
-                            {p.name.substring(0,2).toUpperCase()}
-                          </div>
-                          <div className="font-bold">{p.name}</div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="font-mono">{p.score} pts</div>
-                          <div className={`font-bold w-12 text-right ${gained > 0 ? 'text-green-400' : 'text-gray-400'}`}>
-                            +{gained}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+            <div className="absolute inset-0 bg-black/80 z-30 flex flex-col items-center justify-center p-2 md:p-4 backdrop-blur-sm text-white overflow-hidden">
+              <div className="flex flex-col items-center w-full max-h-full overflow-y-auto py-4">
+                <h2 className="text-xl md:text-2xl font-bold mb-1 md:mb-2 shrink-0">The word was:</h2>
+                <div className="text-3xl md:text-4xl font-extrabold text-yellow-400 tracking-widest mb-4 md:mb-8 uppercase shrink-0">
+                  {turnSummary.word}
                 </div>
-              </div>
-              
-              <div className="text-xl font-semibold animate-pulse text-indigo-200">
-                Next round in {summaryTimeLeft}...
+                
+                <div className="w-full max-w-md bg-white/10 rounded-xl overflow-hidden mb-4 md:mb-8 shadow-2xl shrink-0">
+                  <div className="flex flex-col divide-y divide-white/10 max-h-[30vh] md:max-h-[50vh] overflow-y-auto">
+                    {turnSummary.scores.map((p, i) => {
+                      const gained = turnSummary.pointsThisTurn[p.id] || 0;
+                      return (
+                        <div key={p.id} className="flex items-center justify-between p-2 md:p-3">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className="w-4 md:w-6 text-center font-bold text-gray-400 text-sm md:text-base">#{i + 1}</div>
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-[10px] md:text-xs" style={{ backgroundColor: p.avatar }}>
+                              {p.name.substring(0,2).toUpperCase()}
+                            </div>
+                            <div className="font-bold text-sm md:text-base">{p.name}</div>
+                          </div>
+                          <div className="flex items-center gap-2 md:gap-4 text-sm md:text-base">
+                            <div className="font-mono">{p.score} pts</div>
+                            <div className={`font-bold w-10 md:w-12 text-right ${gained > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                              +{gained}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                <div className="text-lg md:text-xl font-semibold animate-pulse text-indigo-200 shrink-0">
+                  Next round in {summaryTimeLeft}...
+                </div>
               </div>
             </div>
           )}
@@ -225,21 +238,21 @@ export default function Room() {
             <>
               {/* Word Choice Overlay */}
               {isDrawer && wordChoices.length > 0 && (
-                <div className="absolute inset-0 bg-white/95 z-20 flex flex-col items-center justify-center p-4">
-                  <h2 className="text-3xl font-bold text-gray-800 mb-8">Choose a word to draw!</h2>
-                  <div className="flex gap-4 flex-wrap justify-center">
+                <div className="absolute inset-0 bg-white/95 z-20 flex flex-col items-center justify-center p-2 md:p-4 overflow-y-auto">
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4 md:mb-8 text-center mt-auto">Choose a word!</h2>
+                  <div className="flex gap-2 md:gap-4 flex-wrap justify-center max-w-full">
                     {wordChoices.map(word => (
                       <button
                         key={word}
                         onClick={() => chooseWord(word)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-lg shadow-md text-xl transition-transform hover:scale-105"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 md:py-4 px-4 md:px-8 rounded-lg shadow-md text-base md:text-xl transition-transform hover:scale-105"
                       >
                         {word}
                       </button>
                     ))}
                   </div>
-                  <div className="mt-8 text-xl font-bold text-gray-600">
-                    <span className="text-red-500">{timeLeft}</span> seconds left to choose
+                  <div className="mt-6 md:mt-8 mb-auto text-lg md:text-xl font-bold text-gray-600">
+                    <span className="text-red-500">{selectTimeLeft}</span> seconds left to choose
                   </div>
                 </div>
               )}
@@ -257,7 +270,7 @@ export default function Room() {
         </div>
 
         {/* Right Column: Chat */}
-        <div className="w-full md:w-80 shrink-0 h-64 md:h-full">
+        <div className="w-full md:w-80 shrink-0 h-[35vh] md:h-full">
           <ChatBox 
             messages={messages}
             onSendMessage={sendGuess}

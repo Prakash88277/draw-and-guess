@@ -46,6 +46,7 @@ function startTurn(io, roomId) {
   if (!room) return;
 
   room.gameState.turnEnding = false;
+  room.gameState.currentWord = null;
   roomManager.resetGuessFlags(roomId);
   roomManager.clearCanvasHistory(roomId);
   io.to(roomId).emit('canvas:clear');
@@ -74,6 +75,9 @@ function startTurn(io, roomId) {
     totalRounds: room.settings.rounds 
   });
   
+  // Sync reset player states (hasGuessed, isDrawing) to all clients
+  io.to(roomId).emit('room:updated', room.players);
+  
   // Send words only to drawer
   io.to(drawer.id).emit('word:choices', words);
 
@@ -83,13 +87,23 @@ function startTurn(io, roomId) {
     wordSelectionTimers.delete(roomId);
   }
 
-  // Auto-pick word after 15 seconds if drawer doesn't choose
+  // Auto-skip turn after 15 seconds if drawer doesn't choose
   const autoTimer = setTimeout(() => {
     const room = roomManager.getRoomById(roomId);
     if (room && room.gameState.currentWord === null) {
-      const autoWord = room.gameState.wordChoices[0];
-      console.log(`[Auto] No word chosen in room ${roomId}, auto-picking: ${autoWord}`);
-      beginDrawing(io, roomId, autoWord);
+      console.log(`[Auto] No word chosen in room ${roomId}, skipping turn.`);
+      const currentDrawer = room.players[room.gameState.currentDrawerIndex];
+      
+      io.to(roomId).emit('message', { 
+        text: `${currentDrawer ? currentDrawer.name : 'The drawer'} took too long to choose a word. Turn skipped!`, 
+        type: 'system' 
+      });
+      
+      if (currentDrawer) {
+        currentDrawer.isDrawing = false;
+      }
+      
+      nextTurn(io, roomId);
     }
     wordSelectionTimers.delete(roomId);
   }, 15000);

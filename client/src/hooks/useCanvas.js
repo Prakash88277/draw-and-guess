@@ -31,8 +31,6 @@ export function useCanvas(canvasRef, isDrawer, socket, roomId) {
     if (!canvas) return { x: 0, y: 0 };
     
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
 
     let clientX, clientY;
     if (e.touches && e.touches.length > 0) {
@@ -43,9 +41,10 @@ export function useCanvas(canvasRef, isDrawer, socket, roomId) {
       clientY = e.clientY;
     }
 
+    // Return normalized coordinates (0.0 to 1.0)
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
+      x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
     };
   };
 
@@ -84,7 +83,13 @@ export function useCanvas(canvasRef, isDrawer, socket, roomId) {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    drawLine(ctx, lastPos.current.x, lastPos.current.y, pos.x, pos.y, color, brushSize, tool);
+    // Denormalize for local drawing
+    const x0 = lastPos.current.x * canvas.width;
+    const y0 = lastPos.current.y * canvas.height;
+    const x1 = pos.x * canvas.width;
+    const y1 = pos.y * canvas.height;
+
+    drawLine(ctx, x0, y0, x1, y1, color, brushSize, tool);
 
     // emit to server
     if (socket && roomId) {
@@ -94,7 +99,7 @@ export function useCanvas(canvasRef, isDrawer, socket, roomId) {
         x1: pos.x,
         y1: pos.y,
         color,
-        size: brushSize,
+        size: brushSize / canvas.width, // Normalize brush size
         tool
       });
     }
@@ -151,7 +156,16 @@ export function useCanvas(canvasRef, isDrawer, socket, roomId) {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
-      drawLine(ctx, data.x0, data.y0, data.x1, data.y1, data.color, data.size, data.tool);
+      drawLine(
+        ctx, 
+        data.x0 * canvas.width, 
+        data.y0 * canvas.height, 
+        data.x1 * canvas.width, 
+        data.y1 * canvas.height, 
+        data.color, 
+        data.size * canvas.width, 
+        data.tool
+      );
     };
 
     const onClear = () => {
@@ -164,7 +178,16 @@ export function useCanvas(canvasRef, isDrawer, socket, roomId) {
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       strokes.forEach(stroke => {
-        drawLine(ctx, stroke.x0, stroke.y0, stroke.x1, stroke.y1, stroke.color, stroke.size, stroke.tool);
+        drawLine(
+          ctx, 
+          stroke.x0 * canvas.width, 
+          stroke.y0 * canvas.height, 
+          stroke.x1 * canvas.width, 
+          stroke.y1 * canvas.height, 
+          stroke.color, 
+          stroke.size * canvas.width, 
+          stroke.tool
+        );
       });
     };
 
